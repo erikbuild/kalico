@@ -1,47 +1,22 @@
-import os
 import pathlib
-import subprocess
-import sys
 import types
 
 import pytest
 
 ROOT = pathlib.Path(__file__).parent.parent
-sys.path.insert(0, str(ROOT / "lib" / "kconfiglib"))
-
-import kconfiglib  # noqa: E402
-
-KCONFIG = str(ROOT / "src" / "Kconfig")
 CONFIGS = sorted((ROOT / "test" / "configs").glob("*.config")) + sorted(
     (ROOT / "board_configs").glob("*.config")
 )
 
 
-@pytest.fixture(scope="module", autouse=True)
-def _repo_root_cwd():
-    # src/Kconfig sources the generated, gitignored src/extras/Kconfig,
-    # and kconfiglib resolves "source" paths relative to cwd, not the
-    # Kconfig file's location. Regenerate src/extras/ and run from the
-    # repo root so this doesn't depend on `make` having already run.
-    previous = os.getcwd()
-    os.chdir(ROOT)
-    subprocess.run(
-        ["bash", str(ROOT / "scripts" / "find-firmware-extras.sh")],
-        cwd=ROOT,
-        check=True,
-    )
-    try:
-        yield
-    finally:
-        os.chdir(previous)
-
-
 @pytest.mark.parametrize("config_path", CONFIGS, ids=lambda p: p.stem)
-def test_defconfig_roundtrip_reproduces_expanded_config(config_path, tmp_path):
+def test_defconfig_roundtrip_reproduces_expanded_config(
+    config_path, tmp_path, kconfig_tree
+):
     # Loading a minimized defconfig into a fresh Kconfig instance must
     # expand back to the config that produced it. Compare canonical
     # write_config() output, not raw defconfig text.
-    kconf = kconfiglib.Kconfig(KCONFIG, suppress_traceback=True)
+    kconf = kconfig_tree()
     kconf.load_config(str(config_path), replace=True)
 
     expanded_path = tmp_path / "expanded.config"
@@ -51,7 +26,7 @@ def test_defconfig_roundtrip_reproduces_expanded_config(config_path, tmp_path):
     defconfig_path = tmp_path / "defconfig"
     kconf.write_min_config(str(defconfig_path))
 
-    kconf2 = kconfiglib.Kconfig(KCONFIG, suppress_traceback=True)
+    kconf2 = kconfig_tree()
     kconf2.load_config(str(defconfig_path), replace=True)
     # kconfiglib silently drops assignments to symbols the tree doesn't
     # define — assert there are none for a same-tree round trip.
@@ -62,13 +37,15 @@ def test_defconfig_roundtrip_reproduces_expanded_config(config_path, tmp_path):
     assert replayed_path.read_text() == expanded_before
 
 
-def test_handlekconfig_accepts_a_real_all_defaults_board_config(tmp_path):
+def test_handlekconfig_accepts_a_real_all_defaults_board_config(
+    tmp_path, kconfig_tree
+):
     # atmega2560.config matches the Kconfig tree's defaults exactly, so
     # write_min_config() produces a zero-byte defconfig for it.
     # HandleKConfig must accept that, not treat it as a failure.
     from scripts import buildcommands
 
-    kconf = kconfiglib.Kconfig(KCONFIG, suppress_traceback=True)
+    kconf = kconfig_tree()
     kconf.load_config(
         str(ROOT / "test" / "configs" / "atmega2560.config"), replace=True
     )
@@ -92,13 +69,13 @@ def test_handlekconfig_accepts_a_real_all_defaults_board_config(tmp_path):
     [(0, None, "rp2040"), (2, None, "rp2040"), (2, "INDX", "INDX")],
 )
 def test_usb_product_follows_mcu_across_arch_switch(
-    low_level, custom, expected, tmp_path
+    low_level, custom, expected, tmp_path, kconfig_tree
 ):
     # A .config saved for one USB MCU and reused for another must not
     # keep the old MCU name as the USB product, while an explicit custom
     # product must survive the switch (issue #970).
     config_path = str(tmp_path / ".config")
-    kconf = kconfiglib.Kconfig(KCONFIG, suppress_traceback=True)
+    kconf = kconfig_tree()
     kconf.syms["LOW_LEVEL_OPTIONS"].set_value(low_level)
     kconf.syms["MACH_STM32"].set_value(2)
     kconf.syms["MACH_STM32F446"].set_value(2)
@@ -107,8 +84,54 @@ def test_usb_product_follows_mcu_across_arch_switch(
         kconf.syms["USB_PRODUCT"].set_value(custom)
     kconf.write_config(config_path, save_old=False)
 
-    kconf = kconfiglib.Kconfig(KCONFIG, suppress_traceback=True)
+    kconf = kconfig_tree()
     kconf.load_config(config_path)
     kconf.syms["MACH_RPXXXX"].set_value(2)
     kconf.syms["MACH_RP2040"].set_value(2)
     assert kconf.syms["USB_PRODUCT"].str_value == expected
+
+
+def config_assignments(config_path):
+    # Yield (symbol, value) for each assignment line of a .config file
+    for line in config_path.read_text().splitlines():
+        line = line.strip()
+        if line.startswith("CONFIG_") and "=" in line:
+            name, value = line[len("CONFIG_") :].split("=", 1)
+            if len(value) >= 2 and value[0] == value[-1] == '"':
+                value = value[1:-1]
+            yield name, value
+        elif line.startswith("# CONFIG_") and line.endswith(" is not set"):
+            yield line[len("# CONFIG_") : -len(" is not set")], "n"
+
+
+def wrong_assignments(kconf, config_path):
+    # List (symbol, wanted, got) for assignments the loaded tree ignored
+    wrong = []
+    for name, wanted in config_assignments(config_path):
+        sym = kconf.syms.get(name)
+        got = sym.str_value if sym is not None and sym.nodes else None
+        if got != wanted:
+            wrong.append((name, wanted, got))
+    return wrong
+
+
+@pytest.mark.parametrize("config_path", CONFIGS, ids=lambda p: p.stem)
+def test_config_assignments_take_effect(config_path, kconfig_tree):
+    # kconfiglib silently drops assignments to undefined or hidden
+    # symbols, so a stale test config would build a different firmware
+    # than the one it names. Every assignment must survive loading.
+    kconf = kconfig_tree()
+    kconf.load_config(str(config_path), replace=True)
+    assert wrong_assignments(kconf, config_path) == []
+
+
+def test_wrong_assignments_reports_undefined_symbol(tmp_path, kconfig_tree):
+    config_path = tmp_path / "dead.config"
+    config_path.write_text(
+        "CONFIG_MACH_STM32=y\nCONFIG_WANT_DOES_NOT_EXIST=n\n"
+    )
+    kconf = kconfig_tree()
+    kconf.load_config(str(config_path), replace=True)
+    assert wrong_assignments(kconf, config_path) == [
+        ("WANT_DOES_NOT_EXIST", "n", None)
+    ]
