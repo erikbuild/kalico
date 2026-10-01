@@ -64,6 +64,9 @@ fi
 # Verify klippy host software
 ######################################################################
 
-start_test klippy "py.test suite"
-py.test
-finish_test klippy "py.test suite"
+# A partial build (BUILD_CONFIGS set) cannot run the full klippy suite
+if [ -z "${BUILD_CONFIGS-}" ]; then
+    start_test klippy "py.test suite"
+    py.test
+    finish_test klippy "py.test suite"
+fi

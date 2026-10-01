@@ -20,6 +20,6 @@ fi
 exec docker run --rm --platform linux/amd64 \
     -v "$PWD":/work -w /work \
     -v kalico-build-venv:/venv -e UV_PROJECT_ENVIRONMENT=/venv \
-    -v kalico-build-uv-cache:/root/.cache/uv \
+    -v kalico-build-uv-cache:/root/.cache/uv -e UV_LINK_MODE=copy \
     -e DICTDIR=/work/dict \
     --entrypoint /bin/bash "$IMAGE" -c "$*"

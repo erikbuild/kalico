@@ -1,5 +1,6 @@
 # development
 out
+dict/
 *.so
 *.pyc
 __pycache__/
