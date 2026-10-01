@@ -11,7 +11,13 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
+# Build the image only when docker reports it missing, never when docker fails
+if ! INSPECT_ERROR=$(docker image inspect "$IMAGE" 2>&1 >/dev/null); then
+    if [[ "$INSPECT_ERROR" != *"No such image"* ]]; then
+        echo "$INSPECT_ERROR" >&2
+        echo "$0: cannot inspect image $IMAGE; is Docker running?" >&2
+        exit 1
+    fi
     docker build --platform linux/amd64 -f "$ROOT/scripts/Dockerfile-build" \
         -t "$IMAGE" "$ROOT"
 fi
