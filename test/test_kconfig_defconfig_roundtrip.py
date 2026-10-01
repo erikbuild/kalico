@@ -1,6 +1,7 @@
 import pathlib
 import types
 
+import kconfiglib
 import pytest
 
 ROOT = pathlib.Path(__file__).parent.parent
@@ -98,7 +99,7 @@ def config_assignments(config_path):
         if line.startswith("CONFIG_") and "=" in line:
             name, value = line[len("CONFIG_") :].split("=", 1)
             if len(value) >= 2 and value[0] == value[-1] == '"':
-                value = value[1:-1]
+                value = kconfiglib.unescape(value[1:-1])
             yield name, value
         elif line.startswith("# CONFIG_") and line.endswith(" is not set"):
             yield line[len("# CONFIG_") : -len(" is not set")], "n"
@@ -135,3 +136,24 @@ def test_wrong_assignments_reports_undefined_symbol(tmp_path, kconfig_tree):
     assert wrong_assignments(kconf, config_path) == [
         ("WANT_DOES_NOT_EXIST", "n", None)
     ]
+
+
+@pytest.mark.parametrize(
+    "written, loaded",
+    [(r"Erik\"board", 'Erik"board'), (r"Erik\\board", "Erik\\board")],
+    ids=["quote", "backslash"],
+)
+def test_wrong_assignments_accepts_escaped_string_values(
+    written, loaded, tmp_path, kconfig_tree
+):
+    # A .config escapes " and \ inside string values, and the loaded
+    # symbol holds the unescaped string; that is a match, not a drop.
+    config_path = tmp_path / "escaped.config"
+    config_path.write_text(
+        "CONFIG_LOW_LEVEL_OPTIONS=y\nCONFIG_MACH_STM32=y\n"
+        f'CONFIG_USB_MANUFACTURER="{written}"\n'
+    )
+    kconf = kconfig_tree()
+    kconf.load_config(str(config_path), replace=True)
+    assert kconf.syms["USB_MANUFACTURER"].str_value == loaded
+    assert wrong_assignments(kconf, config_path) == []
