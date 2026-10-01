@@ -17,9 +17,10 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
 fi
 
 # The venv lives in a docker volume so it never collides with a host .venv
+# DICTDIR keeps the image's /ci_build/dict; commands that build or read local
+# dictionaries set DICTDIR=/work/dict themselves
 exec docker run --rm --platform linux/amd64 \
     -v "$PWD":/work -w /work \
     -v kalico-build-venv:/venv -e UV_PROJECT_ENVIRONMENT=/venv \
     -v kalico-build-uv-cache:/root/.cache/uv -e UV_LINK_MODE=copy \
-    -e DICTDIR=/work/dict \
     --entrypoint /bin/bash "$IMAGE" -c "$*"
