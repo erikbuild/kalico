@@ -6,8 +6,8 @@ config STM32_SELECT
     bool
     default y
     select HAVE_GPIO
-    select HAVE_GPIO_ADC
-    select HAVE_GPIO_I2C if !MACH_STM32F031
+    select HAVE_GPIO_ADC if !MACH_STM32C5
+    select HAVE_GPIO_I2C if !MACH_STM32F031 && !MACH_STM32C5
     select HAVE_GPIO_SPI if !MACH_STM32F031
     select HAVE_GPIO_SDIO if MACH_STM32F4
     select HAVE_GPIO_HARD_PWM if MACH_STM32F042 || MACH_STM32F070 || MACH_STM32F072 || MACH_STM32F1 || MACH_STM32F4 || MACH_STM32F7 || MACH_STM32G0 || MACH_STM32G4 || MACH_STM32H7
@@ -113,6 +113,12 @@ choice
     config MACH_STM32L412
         bool "STM32L412"
         select MACH_STM32L4
+    config MACH_STM32C551
+        bool "STM32C551"
+        select MACH_STM32C5
+    config MACH_STM32C552
+        bool "STM32C552"
+        select MACH_STM32C5
     config MACH_N32G452
         bool "Nation N32G452"
         select MACH_N32G45x
@@ -156,6 +162,8 @@ config MACH_STM32F0x2 # F042, F072 series
 config MACH_STM32F4x5 # F405, F407, F427, F429 series
     bool
 config MACH_STM32L4
+    bool
+config MACH_STM32C5
     bool
 config MACH_N32G45x
     bool
@@ -205,6 +213,8 @@ config MCU
     default "stm32h743xx" if MACH_STM32H743
     default "stm32h750xx" if MACH_STM32H750
     default "stm32l412xx" if MACH_STM32L412
+    default "stm32c551xx" if MACH_STM32C551
+    default "stm32c552xx" if MACH_STM32C552
     default "stm32f103xe" if MACH_N32G45x
     default "AT32F403Axx" if MACH_AT32F403
 
@@ -225,6 +235,7 @@ config CLOCK_FREQ
     default 520000000 if MACH_STM32H723
     default 400000000 if MACH_STM32H743 || MACH_STM32H750
     default 80000000 if MACH_STM32L412
+    default 144000000 if MACH_STM32C5
     default 64000000 if MACH_N32G45x && STM32_CLOCK_REF_INTERNAL
     default 128000000 if MACH_N32G45x
     default 240000000 if MACH_AT32F403
@@ -238,6 +249,7 @@ config FLASH_SIZE
     default 0x80000 if MACH_STM32F4x5 || MACH_STM32F446 || MACH_STM32F411
     default 0x20000 if MACH_STM32G0 || MACH_STM32G431
     default 0x40000 if MACH_STM32G474
+    default 0x40000 if MACH_STM32C5
     default 0x20000 if MACH_STM32H750
     default 0x200000 if MACH_STM32H743 || MACH_STM32F765
     default 0x20000 if MACH_N32G45x
@@ -271,6 +283,7 @@ config RAM_SIZE
     default 0x9000 if MACH_STM32G07x
     default 0x24000 if MACH_STM32G0Bx
     default 0x20000 if MACH_STM32H7
+    default 0x20000 if MACH_STM32C5
     default 0x10000 if MACH_N32G45x
 
 config STACK_SIZE
@@ -295,6 +308,7 @@ config STM32_DFU_ROM_ADDRESS
     default 0x1fff0000 if MACH_STM32F4 || MACH_STM32F7 || MACH_STM32G0 || MACH_STM32G4 || MACH_STM32L4
     default 0x1fffb000 if MACH_AT32F403
     default 0x1ff09800 if MACH_STM32H7
+    default 0x0bf80000 if MACH_STM32C5
     default 0
 
 
@@ -305,7 +319,7 @@ config STM32_DFU_ROM_ADDRESS
 choice
     prompt "Bootloader offset"
     config STM32_FLASH_START_2000
-        bool "8KiB bootloader" if MACH_STM32F1 || MACH_STM32F070 || MACH_STM32G0 || MACH_STM32G4 || MACH_STM32F0x2
+        bool "8KiB bootloader" if MACH_STM32F1 || MACH_STM32F070 || MACH_STM32G0 || MACH_STM32G4 || MACH_STM32F0x2 || MACH_STM32C5
     config STM32_FLASH_START_5000
         bool "20KiB bootloader" if MACH_STM32F103 || MACH_AT32F403
     config STM32_FLASH_START_7000
@@ -326,7 +340,7 @@ choice
     config STM32_FLASH_START_1000
         bool "4KiB bootloader" if (MACH_STM32F1 || MACH_STM32F0) && !MACH_AT32F403
     config STM32_FLASH_START_4000
-        bool "16KiB bootloader" if MACH_STM32F207 || MACH_STM32F401 || MACH_STM32F4x5 || MACH_STM32F103 || MACH_STM32F072 || MACH_STM32F411
+        bool "16KiB bootloader" if MACH_STM32F207 || MACH_STM32F401 || MACH_STM32F4x5 || MACH_STM32F103 || MACH_STM32F072 || MACH_STM32F411 || MACH_STM32C5
     config STM32_FLASH_START_20000
         bool "128KiB bootloader" if MACH_STM32H743 || MACH_STM32H723 || MACH_STM32F7 || MACH_STM32H750
     config STM32_FLASH_START_20200
@@ -368,14 +382,17 @@ choice
         bool "8 MHz crystal"
     config STM32_CLOCK_REF_12M
         bool "12 MHz crystal"
+        depends on !MACH_STM32C5
     config STM32_CLOCK_REF_16M
         bool "16 MHz crystal"
     config STM32_CLOCK_REF_20M
         bool "20 MHz crystal"
+        depends on !MACH_STM32C5
     config STM32_CLOCK_REF_24M
         bool "24 MHz crystal"
     config STM32_CLOCK_REF_25M
         bool "25 MHz crystal"
+        depends on !MACH_STM32C5
     config STM32_CLOCK_REF_INTERNAL
         bool "Internal clock"
 endchoice
@@ -436,7 +453,7 @@ choice
         select SERIAL
     config STM32_SERIAL_USART3
         bool "Serial (on USART3 PB11/PB10)" if LOW_LEVEL_OPTIONS
-        depends on !MACH_STM32F0 && !MACH_STM32F401 && !MACH_STM32F411
+        depends on !MACH_STM32F0 && !MACH_STM32F401 && !MACH_STM32F411 && !MACH_STM32C5
         select SERIAL
     config STM32_SERIAL_USART3_ALT_PD9_PD8
         bool "Serial (on USART3 PD9/PD8)" if LOW_LEVEL_OPTIONS
@@ -448,7 +465,7 @@ choice
         select SERIAL
     config STM32_SERIAL_UART4
         bool "Serial (on UART4 PA0/PA1)"
-        depends on MACH_STM32H7
+        depends on MACH_STM32H7 || MACH_STM32C5
         select SERIAL
     config STM32_SERIAL_USART5
         bool "Serial (on USART5 PD2/PD3)" if LOW_LEVEL_OPTIONS

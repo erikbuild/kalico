@@ -1,0 +1,6 @@
+# Test case for the stm32c5 pin and bus names
+DICTIONARY stm32c551.dict
+CONFIG stm32c5.cfg
+
+SET_PIN PIN=port_a_pin VALUE=1
+SET_PIN PIN=port_h_pin VALUE=0
