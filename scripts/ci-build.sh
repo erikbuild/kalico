@@ -31,9 +31,10 @@ finish_test()
 # Run compile tests for several different MCU types
 ######################################################################
 
+# Set BUILD_CONFIGS to a space separated list of configs to build only those
 compile()
 {
-    for TARGET in test/configs/*.config ; do
+    for TARGET in ${BUILD_CONFIGS:-test/configs/*.config} ; do
         start_test mcu_compile "$TARGET"
         make clean
         make distclean
