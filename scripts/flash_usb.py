@@ -386,18 +386,29 @@ If attempting to flash via 3.3V serial, then use:
 """
 
 
-def flash_stm32f4(options, binfile):
+# Flash via the STM32 ROM DFU bootloader (or Katapult when detected)
+def flash_stm32_dfu(options, binfile):
     start = "0x%x:leave" % (options.start,)
     try:
-        if options.start == 0x8004000:
-            flash_hidflash(options.device, binfile, options.sudo)
-        else:
-            flash_dfuutil(
-                options.device,
-                binfile,
-                ["-R", "-a", "0", "-s", start],
-                options.sudo,
-            )
+        flash_dfuutil(
+            options.device,
+            binfile,
+            ["-R", "-a", "0", "-s", start],
+            options.sudo,
+        )
+    except error as e:
+        sys.stderr.write(
+            STM32F4_HELP % (options.device, str(e), options.device)
+        )
+        sys.exit(-1)
+
+
+def flash_stm32f4(options, binfile):
+    if options.start != 0x8004000:
+        flash_stm32_dfu(options, binfile)
+        return
+    try:
+        flash_hidflash(options.device, binfile, options.sudo)
     except error as e:
         sys.stderr.write(
             STM32F4_HELP % (options.device, str(e), options.device)
@@ -452,7 +463,7 @@ MCUTYPES = {
     "stm32h7": flash_stm32f4,
     "stm32l4": flash_stm32f4,
     "stm32g4": flash_stm32f4,
-    "stm32c5": flash_stm32f4,
+    "stm32c5": flash_stm32_dfu,
     "rp2": flash_rp2040,
 }
 
