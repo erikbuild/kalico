@@ -1,7 +1,7 @@
 // ABOUTME: Clock, flash wait state and peripheral clock setup for the stm32c5 family.
 // ABOUTME: Provides the per-family hooks (clock lines, pclock, gpio clocks, startup) used by the stm32 drivers.
 //
-// Copyright (C) 2026  Erik Reynolds <erik@hartunions.com>
+// Copyright (C) 2026  Erik Reynolds <me@erik.build>
 //
 // This file may be distributed under the terms of the GNU GPLv3 license.
 
