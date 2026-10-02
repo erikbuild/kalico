@@ -93,6 +93,15 @@ struct i2c_info {
   DECL_CONSTANT_STR("BUS_PINS_i2c2_PB10_PB11", "PB10,PB11");
   DECL_ENUMERATION("i2c_bus", "i2c3_PA8_PC9", 3);
   DECL_CONSTANT_STR("BUS_PINS_i2c3_PA8_PC9", "PA8,PC9");
+#elif CONFIG_MACH_STM32C5
+  DECL_ENUMERATION("i2c_bus", "i2c1_PB6_PB7", 0);
+  DECL_CONSTANT_STR("BUS_PINS_i2c1_PB6_PB7", "PB6,PB7");
+  DECL_ENUMERATION("i2c_bus", "i2c1_PB8_PB9", 1);
+  DECL_CONSTANT_STR("BUS_PINS_i2c1_PB8_PB9", "PB8,PB9");
+  DECL_ENUMERATION("i2c_bus", "i2c2_PB10_PB12", 2);
+  DECL_CONSTANT_STR("BUS_PINS_i2c2_PB10_PB12", "PB10,PB12");
+  DECL_ENUMERATION("i2c_bus", "i2c2_PB3_PB4", 3);
+  DECL_CONSTANT_STR("BUS_PINS_i2c2_PB3_PB4", "PB3,PB4");
 #endif
 
 static const struct i2c_info i2c_bus[] = {
@@ -136,6 +145,11 @@ static const struct i2c_info i2c_bus[] = {
     { I2C1, GPIO('B', 8), GPIO('B', 9), GPIO_FUNCTION(4) },
     { I2C2, GPIO('B', 10), GPIO('B', 11), GPIO_FUNCTION(4) },
     { I2C3, GPIO('A', 8), GPIO('C', 9), GPIO_FUNCTION(4) },
+#elif CONFIG_MACH_STM32C5
+    { I2C1, GPIO('B', 6), GPIO('B', 7), GPIO_FUNCTION(4) },
+    { I2C1, GPIO('B', 8), GPIO('B', 9), GPIO_FUNCTION(4) },
+    { I2C2, GPIO('B', 10), GPIO('B', 12), GPIO_FUNCTION(4) },
+    { I2C2, GPIO('B', 3), GPIO('B', 4), GPIO_FUNCTION(9) },
 #endif
 };
 
@@ -181,6 +195,8 @@ i2c_setup(uint32_t bus, uint32_t rate, uint8_t addr)
     return (struct i2c_config){ .i2c=i2c, .addr=addr<<1 };
 }
 
+// BERR is never checked, which also covers stm32c5 erratum ES0661 2.7.2
+// (spurious BERR in controller mode)
 static int
 i2c_wait(I2C_TypeDef *i2c, uint32_t set, uint32_t timeout)
 {
