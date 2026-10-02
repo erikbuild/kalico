@@ -9,3 +9,5 @@ Items found while executing `plans/2026-10-01_stm32c5.md` that are real but outs
 | `codex-review.sh` creates temp files with `mktemp` before normalizing `TMPDIR`; with `TMPDIR` inside the repo the temp file enters the review scope | `scripts/codex-review.sh` lines ~124-125 (source: HART-CETEC-Admin-Tool kit) | Erik |
 | Pre-existing GCC warnings (18) in the ar100 test build from src/ar100/util.{c,h}; present before this branch | src/ar100 | Erik |
 | STM32H723 SPI bus table was shifted one entry (unguarded PI1-PI3 route) so spi5/spi5a/spi6 mapped to the wrong pins; fixed on this branch by commit dfaaa145 — consider sending upstream (Klipper/Kalico) | src/stm32/stm32h7_spi.c | Erik |
+| Shared usbfs.c `usb_init()` (F0/L4/G0/G4/AT32) releases USB reset right after clearing PDWN without the tSTARTUP wait the reference manuals require; fixed for stm32c5 only on this branch | src/stm32/usbfs.c (kalico + katapult) | Erik |
+| codex-review.sh exits 3 (fallback allowed) when `codex doctor` fails without parseable JSON; unknown auth status should block (re-raised by the final review) | scripts/codex-review.sh (kit source: HART-CETEC-Admin-Tool) | Erik |
