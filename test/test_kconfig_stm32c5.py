@@ -66,3 +66,11 @@ def test_stm32c5_bootloader_offsets(kconfig_tree):
         assert _visible(kconf, "STM32_FLASH_START_" + name), name
     for name in ("800", "1000", "5000", "8000", "C000", "10000", "20000"):
         assert not _visible(kconf, "STM32_FLASH_START_" + name), name
+
+
+@pytest.mark.parametrize("mach,mcu", STM32C5_PARTS)
+def test_stm32c5_offers_usb(kconfig_tree, mach, mcu):
+    kconf = _select(kconfig_tree, mach)
+    assert _visible(kconf, "STM32_USB_PA11_PA12")
+    assert kconf.syms["STM32_USB_PA11_PA12"].str_value == "y"
+    assert kconf.syms["STM32_DFU_ROM_ADDRESS"].str_value == "0x0bf80000"
