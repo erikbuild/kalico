@@ -74,3 +74,33 @@ def test_stm32c5_offers_usb(kconfig_tree, mach, mcu):
     assert _visible(kconf, "STM32_USB_PA11_PA12")
     assert kconf.syms["STM32_USB_PA11_PA12"].str_value == "y"
     assert kconf.syms["STM32_DFU_ROM_ADDRESS"].str_value == "0x0bf80000"
+
+
+STM32C5_CAN_PINS = ["PB8_PB9", "PB5_PB6", "PB12_PB13", "PD0_PD1"]
+OTHER_CAN_PINS = ["PB0_PB1", "PD12_PD13", "PC2_PC3", "PH13_PH14"]
+
+
+def test_stm32c552_can_choices(kconfig_tree):
+    kconf = _select(kconfig_tree, "MACH_STM32C552")
+    for name in ["STM32_CANBUS_PA11_PA12", "STM32_CANBUS_PA11_PB9"]:
+        assert _visible(kconf, name), name
+    for pins in STM32C5_CAN_PINS:
+        assert _visible(kconf, "STM32_MMENU_CANBUS_" + pins), pins
+    for pins in OTHER_CAN_PINS + ["PI9_PH13"]:
+        assert not _visible(kconf, "STM32_MMENU_CANBUS_" + pins), pins
+    assert _visible(kconf, "STM32_USBCANBUS_PA11_PA12")
+
+
+def test_stm32c552_bridge_can_choices(kconfig_tree):
+    kconf = _select(kconfig_tree, "MACH_STM32C552", "STM32_USBCANBUS_PA11_PA12")
+    for pins in STM32C5_CAN_PINS:
+        assert _visible(kconf, "STM32_CMENU_CANBUS_" + pins), pins
+    for pins in OTHER_CAN_PINS + ["PI9_PH13"]:
+        assert not _visible(kconf, "STM32_CMENU_CANBUS_" + pins), pins
+
+
+def test_stm32c551_has_no_can(kconfig_tree):
+    kconf = _select(kconfig_tree, "MACH_STM32C551")
+    assert kconf.syms["HAVE_STM32_FDCANBUS"].str_value == "n"
+    for name in ["STM32_CANBUS_PA11_PA12", "STM32_USBCANBUS_PA11_PA12"]:
+        assert not _visible(kconf, name), name
