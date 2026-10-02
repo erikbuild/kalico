@@ -4,3 +4,5 @@ CONFIG stm32c5.cfg
 
 SET_PIN PIN=port_a_pin VALUE=1
 SET_PIN PIN=port_h_pin VALUE=0
+SET_PIN PIN=hard_pwm_pin VALUE=0.5
+SET_PIN PIN=hard_pwm_pin VALUE=1
