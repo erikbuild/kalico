@@ -196,6 +196,12 @@ static void
 cache_setup(void)
 {
     ARM_MPU_Disable();
+    // A bootloader may leave regions configured, so clear them all
+    uint32_t regions = ((MPU->TYPE & MPU_TYPE_DREGION_Msk)
+                        >> MPU_TYPE_DREGION_Pos);
+    uint32_t i;
+    for (i = 0; i < regions; i++)
+        ARM_MPU_ClrRegion(i);
     ARM_MPU_SetMemAttr(0, ARM_MPU_ATTR(ARM_MPU_ATTR_NON_CACHEABLE
                                        , ARM_MPU_ATTR_NON_CACHEABLE));
     ARM_MPU_SetRegion(0, ARM_MPU_RBAR(FLASH_READ_ONLY_START, ARM_MPU_SH_NON
