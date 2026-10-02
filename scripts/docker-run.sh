@@ -3,7 +3,7 @@
 # ABOUTME: Builds the image from scripts/Dockerfile-build (linux/amd64, as in CI) when it is missing.
 set -euo pipefail
 
-IMAGE=kalico-build
+IMAGE=kalico-build:latest
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 if [ "$#" -eq 0 ]; then
