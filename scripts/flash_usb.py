@@ -452,8 +452,17 @@ MCUTYPES = {
     "stm32h7": flash_stm32f4,
     "stm32l4": flash_stm32f4,
     "stm32g4": flash_stm32f4,
+    "stm32c5": flash_stm32f4,
     "rp2": flash_rp2040,
 }
+
+
+def lookup_flash_func(mcutype):
+    # Return the flashing routine for an mcu type, matched by prefix
+    for prefix, func in MCUTYPES.items():
+        if mcutype.startswith(prefix):
+            return func
+    return None
 
 
 ######################################################################
@@ -493,10 +502,7 @@ def main():
         opts.error("Incorrect number of arguments")
     flash_func = None
     if options.mcutype:
-        for prefix, func in MCUTYPES.items():
-            if options.mcutype.startswith(prefix):
-                flash_func = func
-                break
+        flash_func = lookup_flash_func(options.mcutype)
     if flash_func is None:
         opts.error(
             "USB flashing is not supported for MCU '%s'" % (options.mcutype,)

@@ -524,6 +524,35 @@ setting "boot 0" low, "boot 1" high and plugging in the device.  After
 programming is complete unplug the device and set "boot 1" back to low
 so the application will be loaded.
 
+## STM32C5 micro-controllers
+
+The STM32C551 and STM32C552 ROM bootloader supports USB DFU on
+PA11/PA12 and does not need an external crystal. With the factory
+option bytes the BOOT0 pin is ignored: a chip with empty flash starts
+the ROM bootloader, and a programmed chip starts the code at
+0x08000000.
+
+To flash a blank chip, connect it over USB and run (use
+`katapult.bin` to install Katapult, or `out/klipper.bin` for Kalico
+without a bootloader):
+```
+dfu-util -d 0483:df11 -R -a 0 -s 0x08000000:leave -D out/klipper.bin
+```
+
+The chip remembers that its flash was empty until the next power
+cycle. Kalico and Katapult clear that flag at startup, so later
+resets boot the flashed code.
+
+With Katapult installed, build Kalico with the matching "Bootloader
+offset" (8KiB or 16KiB) and flash it with Katapult's `flashtool.py`
+over USB or CAN. Without Katapult, `make flash` reboots Kalico into
+the ROM bootloader and flashes over DFU.
+
+To use the BOOT0 pin instead, the BOOT_SEL option bit must first be
+programmed with an ST tool. Do not change the read protection (RDP)
+option byte: the STM32C5 has no level 1, and setting level 2 without
+a provisioned OEM key locks the chip permanently.
+
 ## LPC176x micro-controllers (Smoothieboards)
 
 This document does not describe the method to flash a bootloader
