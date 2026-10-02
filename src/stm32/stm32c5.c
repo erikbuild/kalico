@@ -134,7 +134,8 @@ clear_flash_empty_flag(void)
         FLASH->ACR &= ~FLASH_ACR_EMPTY;
 }
 
-// Set flash wait states for 144MHz (RM0522 Table 20) before speeding up
+// Set flash wait states for 144MHz (RM0522 Table 20). These are valid at
+// any HCLK up to 144MHz, so they are set before any clock is changed.
 static void
 flash_setup(void)
 {
@@ -150,8 +151,6 @@ flash_setup(void)
 static void
 clock_setup(void)
 {
-    flash_setup();
-
     uint32_t ck48sel;
 #if CONFIG_STM32_CLOCK_REF_INTERNAL
     // Run from the internal 144MHz oscillator (HSIS)
@@ -210,6 +209,9 @@ void
 armcm_main(void)
 {
     SCB->VTOR = (uint32_t)VectorTable;
+
+    // Flash wait states first, so no clock change below outruns the flash
+    flash_setup();
 
     // Reset clock registers (in case a bootloader changed them)
     rcc_reset();
