@@ -69,6 +69,7 @@ adc-src-$(CONFIG_MACH_STM32G0) := stm32/stm32f0_adc.c
 adc-src-$(CONFIG_MACH_STM32G4) := stm32/stm32h7_adc.c
 adc-src-$(CONFIG_MACH_STM32H7) := stm32/stm32h7_adc.c
 adc-src-$(CONFIG_MACH_STM32L4) := stm32/stm32h7_adc.c
+adc-src-$(CONFIG_MACH_STM32C5) := stm32/stm32h7_adc.c
 src-$(CONFIG_WANT_ADC) += $(adc-src-y)
 
 spi-src-y := stm32/spi.c

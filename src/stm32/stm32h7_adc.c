@@ -133,6 +133,41 @@ static const uint8_t adc_pins[] = {
     ADC_INVALID_PIN,        // [16] opamp
     GPIO('A', 4),           // [17]
     ADC_INVALID_PIN,        // [18] opamp
+#elif CONFIG_MACH_STM32C5
+    GPIO('A', 0),           // [0] ADC1
+    GPIO('A', 1),           // [1]
+    GPIO('A', 2),           // [2]
+    GPIO('A', 3),           // [3]
+    GPIO('A', 4),           // [4]
+    GPIO('A', 5),           // [5]
+    GPIO('A', 6),           // [6]
+    GPIO('A', 7),           // [7]
+    GPIO('C', 0),           // [8]
+    GPIO('C', 1),           // [9]
+    GPIO('C', 2),           // [10]
+    GPIO('C', 3),           // [11]
+    ADC_TEMPERATURE_PIN,    // [12] vtemp
+    ADC_INVALID_PIN,        // [13] vrefint
+    ADC_INVALID_PIN,        // [14]
+    ADC_INVALID_PIN,        // [15]
+    ADC_INVALID_PIN,        // [16]
+    ADC_INVALID_PIN,        // [17]
+    ADC_INVALID_PIN,        // [18]
+    ADC_INVALID_PIN,        // [19]
+    GPIO('A', 0),           // [0] ADC2
+    GPIO('A', 1),           // [1]
+    GPIO('A', 2),           // [2]
+    GPIO('A', 3),           // [3]
+    GPIO('C', 4),           // [4]
+    GPIO('C', 5),           // [5]
+    GPIO('B', 0),           // [6]
+    GPIO('B', 1),           // [7]
+    GPIO('B', 2),           // [8]
+    GPIO('C', 1),           // [9]
+    GPIO('C', 2),           // [10]
+    GPIO('C', 3),           // [11]
+    GPIO('H', 4),           // [12]
+    GPIO('H', 5),           // [13]
 #else // stm32l4
     ADC_INVALID_PIN,        // vref
     GPIO('C', 0),           // ADC12_IN1 .. 16
@@ -158,7 +193,13 @@ static const uint8_t adc_pins[] = {
 
 // ADC timing
 #define ADC_CKMODE 0b11
-#define ADC_ATICKS 0b110
+#if CONFIG_MACH_STM32C5
+  // 144Mhz stm32c5: clock=18Mhz, Tsamp=289, Tconv=302, total=16.8us
+  // (meets the temperature sensor's 13us minimum sample time)
+  #define ADC_ATICKS 0b111
+#else
+  #define ADC_ATICKS 0b110
+#endif
 #define ADC_ATICKS_H723_ADC3 0b111
 // 400Mhz stm32h7: clock=25Mhz, Tsamp=387.5, Tconv=394, total=15.76us
 // 520Mhz stm32h723: clock=32.5Mhz, Tsamp=387.5, Tconv=394, total=12.12us
@@ -171,6 +212,8 @@ static const uint8_t adc_pins[] = {
   #define PCSEL PCSEL_RES0
 #elif CONFIG_MACH_STM32G4
   #define ADC_CCR_TSEN ADC_CCR_VSENSESEL
+#elif CONFIG_MACH_STM32C5
+  #define ADC_CCR_TSEN ADCC_CCR_TSEN
 #endif
 
 struct gpio_adc
@@ -210,10 +253,19 @@ gpio_adc_setup(uint32_t pin)
         adc = ADC1;
         adc_common = ADC12_COMMON;
     }
-    if (!is_enabled_pclock((uint32_t)adc_common))
+    if (!is_enabled_pclock((uint32_t)adc_common)) {
         enable_pclock((uint32_t)adc_common);
+#if CONFIG_MACH_STM32C5
+        // TSEN can only change while the ADCs are disabled, so enable
+        // the temperature sensor before any ADC is enabled
+        adc_common->CCR |= ADC_CCR_TSEN;
+#endif
+    }
+#if !CONFIG_MACH_STM32C5
+    // The stm32c5 ADC clock comes from the RCC, not from CKMODE
     MODIFY_REG(adc_common->CCR, ADC_CCR_CKMODE_Msk,
                ADC_CKMODE << ADC_CCR_CKMODE_Pos);
+#endif
 
     // Enable the ADC
     if (!(adc->CR & ADC_CR_ADEN)) {
@@ -259,13 +311,22 @@ gpio_adc_setup(uint32_t pin)
                        | (aticks << 18) | (aticks << 21) | (aticks << 24)
                        | (aticks << 27));
         adc->SMPR1 = av;
+#if CONFIG_MACH_STM32C5
+        // Channels 14-19 do not exist; keep their reset sample times
+        adc->SMPR2 = av & 0xfff;
+#else
         adc->SMPR2 = av;
+#endif
     }
 
     if (pin == ADC_TEMPERATURE_PIN) {
         adc_common->CCR |= ADC_CCR_TSEN;
     } else {
         gpio_peripheral(pin, GPIO_ANALOG, 0);
+#if CONFIG_MACH_STM32C5
+        // Connect the pin's analog switch (not used for internal channels)
+        adc->PCSEL |= 1 << chan;
+#endif
     }
 
     // Setup preselect (connect) channel on stm32h7
