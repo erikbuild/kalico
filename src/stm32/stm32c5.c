@@ -186,6 +186,29 @@ clock_setup(void)
                    | (ADCDACPRE_DIV8 << RCC_CCIPR2_ADCDACPRE_Pos));
 }
 
+// The OTP and read-only flash areas (unique id, flash size, factory
+// calibration values) fault on cached reads, so map them non-cacheable
+// before the instruction cache is enabled
+#define FLASH_READ_ONLY_START 0x08ffe000
+#define FLASH_READ_ONLY_END 0x08ffffff
+
+static void
+cache_setup(void)
+{
+    ARM_MPU_Disable();
+    ARM_MPU_SetMemAttr(0, ARM_MPU_ATTR(ARM_MPU_ATTR_NON_CACHEABLE
+                                       , ARM_MPU_ATTR_NON_CACHEABLE));
+    ARM_MPU_SetRegion(0, ARM_MPU_RBAR(FLASH_READ_ONLY_START, ARM_MPU_SH_NON
+                                      , 1, 1, 1)
+                      , ARM_MPU_RLAR(FLASH_READ_ONLY_END, 0));
+    ARM_MPU_Enable(MPU_CTRL_PRIVDEFENA_Msk);
+
+    // Wait for the reset-time cache invalidation, then enable the cache
+    while (ICACHE->SR & ICACHE_SR_BUSYF)
+        ;
+    ICACHE->CR |= ICACHE_CR_EN;
+}
+
 
 /****************************************************************
  * Bootloader
@@ -220,6 +243,7 @@ armcm_main(void)
 
     clear_flash_empty_flag();
     clock_setup();
+    cache_setup();
 
     sched_main();
 }
