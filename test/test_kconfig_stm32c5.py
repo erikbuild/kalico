@@ -104,3 +104,9 @@ def test_stm32c551_has_no_can(kconfig_tree):
     assert kconf.syms["HAVE_STM32_FDCANBUS"].str_value == "n"
     for name in ["STM32_CANBUS_PA11_PA12", "STM32_USBCANBUS_PA11_PA12"]:
         assert not _visible(kconf, name), name
+
+
+def test_stm32c5_default_bootloader_offset(kconfig_tree):
+    # Matches Katapult's default application offset for stm32c5
+    kconf = _select(kconfig_tree, "MACH_STM32C552")
+    assert kconf.syms["STM32_FLASH_START_2000"].str_value == "y"
