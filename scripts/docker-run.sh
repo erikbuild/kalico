@@ -11,13 +11,13 @@ if [ "$#" -eq 0 ]; then
     exit 2
 fi
 
-# Build the image only when docker reports it missing, never when docker fails
-if ! INSPECT_ERROR=$(docker image inspect "$IMAGE" 2>&1 >/dev/null); then
-    if [[ "$INSPECT_ERROR" != *"No such image"* ]]; then
-        echo "$INSPECT_ERROR" >&2
-        echo "$0: cannot inspect image $IMAGE; is Docker running?" >&2
-        exit 1
-    fi
+# Use the image list: inspect can report a stopped Docker Desktop VM's images missing without waking it
+if ! IMAGE_ID=$(docker image ls --quiet "$IMAGE" 2>&1); then
+    echo "$IMAGE_ID" >&2
+    echo "$0: cannot list images; is Docker running?" >&2
+    exit 1
+fi
+if [ -z "$IMAGE_ID" ]; then
     docker build --platform linux/amd64 -f "$ROOT/scripts/Dockerfile-build" \
         -t "$IMAGE" "$ROOT"
 fi
